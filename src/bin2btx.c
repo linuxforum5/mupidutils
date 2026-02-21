@@ -40,7 +40,9 @@
 bool verbose = false;
 unsigned int load_addr = 0x8100;
 unsigned int load_bank = 2;
-unsigned char progress_row = 0; // the progress bar row. 0=no progress bar
+unsigned int progress_row = 0; // the progress bar row. 0=no progress bar
+unsigned int progress_char = 127; // character for progress bas
+unsigned int progress_bg_char = '-'; // bg character for progress bas
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Address functions
@@ -112,12 +114,13 @@ void put_progressbar_start_block( FILE *fout, unsigned char row ) {
     fputc( 0x1F, fout );
     fputc( 64+row, fout );
     fputc( 0x41, fout );
-
+    fputc( 0x87, fout );
 //    fputc( 0x19, fout ); // 
 //    fputc( ';', fout ); // # W
-    fputc( 0x1D, fout ); // 
-    fputc( 'Q', fout ); // # W
-
+//    fputc( 0x1D, fout ); // 
+    fputc( 0x0F, fout ); // 
+//    fputc( 'A', fout ); // 
+    fputc( progress_bg_char, fout ); // # W
     fputc( 0x12, fout ); // repeat
     fputc( 0x40+39, fout ); // repeat
     fputc( 0x1F, fout );
@@ -129,9 +132,9 @@ void put_progressbar_step_block( FILE *fout, unsigned char row, unsigned char co
     fputc( 0x1F, fout );
     fputc( 0x40+row, fout );
     fputc( 0x40+col, fout );
-    fputc( 0x1D, fout ); // 
+//    fputc( 0x1D, fout ); // 
     fputc( 0x82, fout ); // # W
-    fputc( 127, fout ); // # W
+    fputc( progress_char, fout ); // # W
 //    fputc( 0x7C, fout ); // White box
 }
 
@@ -175,6 +178,8 @@ void print_usage() {
     printf( "-b [2|3]     : load into BANK 2 or 3. Default value is %d\n", load_bank );
     printf( "-B BtxScreen : BTX screen befor load. Default is empty.\n", load_bank );
     printf( "-p row       : progress bar in row ([1-24]). Default is no progress bar.\n", load_bank );
+    printf( "-c char      : caracterCode for progress bar ([0-255]). Default value is %d.\n", progress_char );
+    printf( "-C char      : caracterCode for progress background ([0-255]). Default value is %d.\n", progress_bg_char );
     printf( "-h           : prints this text\n");
     exit(1);
 }
@@ -191,7 +196,7 @@ int main(int argc, char *argv[]) {
     int argd = argc;
 
     while ( !finished ) {
-        switch ( getopt ( argc, argv, "?hvl:b:B:p:" ) ) {
+        switch ( getopt ( argc, argv, "?hvl:b:B:p:c:C:" ) ) {
             case -1:
             case ':':
                 finished = true;
@@ -216,6 +221,26 @@ int main(int argc, char *argv[]) {
                 }
                 if ( ( progress_row < 1 ) || ( progress_row > 24 ) ) {
                     fprintf( stderr, "Progress bar is between 1 and 24\n");
+                    exit(2);
+                }
+                break;
+            case 'c' :
+                if ( !sscanf( optarg, "%i", &progress_char ) ) {
+                    fprintf( stderr, "Error parsing argument for '-c'.\n");
+                    exit(2);
+                }
+                if ( ( progress_char < 0 ) || ( progress_char > 255 ) ) {
+                    fprintf( stderr, "Progress char code is between 0 and 255\n");
+                    exit(2);
+                }
+                break;
+            case 'C' :
+                if ( !sscanf( optarg, "%i", &progress_bg_char ) ) {
+                    fprintf( stderr, "Error parsing argument for '-C'.\n");
+                    exit(2);
+                }
+                if ( ( progress_bg_char < 0 ) || ( progress_bg_char > 255 ) ) {
+                    fprintf( stderr, "Progress bg char code is between 0 and 255\n");
                     exit(2);
                 }
                 break;
