@@ -19,7 +19,7 @@
  * END one byte
  *   - 0x21 : End teleprogram
  *   - 0x22 : End data block
- *   - 0x28 : End teleprogram, and START ADDR3 + PROGBA (???)
+ *   - 0x28 : End teleprogram, and START ADDR3 + PROGBA (0x6D6C) : Programmbasis (3 Bytes: Bank(0x6D6C-0x80) und adresse(0x6D6D-0x0000)), wird bei Programmende PROGEX) bzw. Reset initialisiert
  *   - 0x29 : End teleprogram, and START ADDR3
  *   - 0x2A : End teleprogram, and start BASIC
  ****************************************************/
@@ -34,7 +34,7 @@
 #include "math.h"
 
 #define VM 0
-#define VS 2
+#define VS 3
 #define VB 'b'
 
 bool verbose = false;
@@ -45,6 +45,8 @@ unsigned int progress_char = 127; // character for progress bas
 unsigned int progress_bg_char = '-'; // bg character for progress bas
 unsigned int progress_palette = 2; // green
 unsigned int progress_bg_palette = 7; // white
+unsigned int end_code = 0x29;
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /// Address functions
@@ -155,7 +157,7 @@ void convert( FILE *fin, FILE *fout ) {
             if ( i == 39 ) {
                 convert_block( fin, fout, current_load_addr, size - 39 * block_size, 0x22 );
                 put_progressbar_step_block( fout, progress_row, i+1 );
-                convert_block( fin, fout, load_addr, 0, 0x29 );
+                convert_block( fin, fout, load_addr, 0, end_code );
             } else {
                 convert_block( fin, fout, current_load_addr, block_size, 0x22 );
                 put_progressbar_step_block( fout, progress_row, i+1 );
@@ -163,7 +165,7 @@ void convert( FILE *fin, FILE *fout ) {
             current_load_addr += block_size;
         }
     } else { // All in one
-        convert_block( fin, fout, load_addr, size, 0x29 );
+        convert_block( fin, fout, load_addr, size, end_code );
     }
 }
 
@@ -184,6 +186,7 @@ void print_usage() {
     printf( "-p index     : palette index for char ([0-7]). Default value is %d.\n", progress_palette );
     printf( "-C char      : caracterCode for progress background ([0-255]). Default value is %d.\n", progress_bg_char );
     printf( "-P index     : palette index for bg char ([0-7]). Default value is %d.\n", progress_bg_palette );
+    printf( "-e code      : End-code. The last block close code. Default value is 0x%02X (%d)\n", end_code, end_code );
     printf( "-h           : prints this text\n");
     exit(1);
 }
@@ -200,7 +203,7 @@ int main(int argc, char *argv[]) {
     int argd = argc;
 
     while ( !finished ) {
-        switch ( getopt ( argc, argv, "?hvl:b:B:r:c:C:p:P:" ) ) {
+        switch ( getopt ( argc, argv, "?hvl:b:B:r:c:C:p:P:e:" ) ) {
             case -1:
             case ':':
                 finished = true;
@@ -275,6 +278,16 @@ int main(int argc, char *argv[]) {
                 }
                 if ( ( load_bank < 2 ) || ( load_bank > 3 ) ) {
                     fprintf( stderr, "Load Bank is only 2 or 3\n");
+                    exit(2);
+                }
+                break;
+            case 'e' :
+                if ( !sscanf( optarg, "%i", &end_code ) ) {
+                    fprintf( stderr, "Error parsing argument for '-e'.\n");
+                    exit(2);
+                }
+                if ( ( end_code != 0x21 ) && ( end_code != 0x22 ) && ( end_code != 0x28 ) && ( end_code != 0x29 ) && ( end_code != 0x2A ) ) {
+                    fprintf( stderr, "End code is only 33 (0x21), 34 (0x22), 40 (0x28), 41 (0x29) or 42 (0x2A)\n");
                     exit(2);
                 }
                 break;
