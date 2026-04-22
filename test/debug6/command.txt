@@ -1,0 +1,1 @@
+paltool -b 4 -m 32 -p fixed_palette.txt img1.png img2.png
